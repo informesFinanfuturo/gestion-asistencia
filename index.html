@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Asistencia - Evento</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header class="app-header">
+            <h1>Gestión de Asistencia</h1>
+            <p class="event-info">Evento de Ejemplo - 24 de Junio, 2025</p>
+        </header>
+
+        <!-- Navigation Tabs -->
+        <nav class="tabs-nav" role="tablist">
+            <button class="tab-button active" data-tab="agregar" role="tab" aria-selected="true">
+                <span class="tab-icon">👥</span>
+                Agregar Participantes
+            </button>
+            <button class="tab-button" data-tab="asistencia" role="tab" aria-selected="false">
+                <span class="tab-icon">✅</span>
+                Tomar Asistencia
+            </button>
+            <button class="tab-button" data-tab="resumen" role="tab" aria-selected="false">
+                <span class="tab-icon">📊</span>
+                Resumen
+            </button>
+        </nav>
+
+        <!-- Tab Content Sections -->
+        <main class="tab-content">
+            <!-- Agregar Participantes Tab -->
+            <section id="agregar" class="tab-pane active" role="tabpanel">
+                <!-- Excel Import Section -->
+                <div class="card excel-import-section">
+                    <div class="card__header">
+                        <h2>Importar desde Excel</h2>
+                        <p class="import-description">Carga participantes masivamente desde un archivo Excel</p>
+                    </div>
+                    <div class="card__body">
+                        <!-- Drag & Drop Zone -->
+                        <div id="dropZone" class="drop-zone">
+                            <div class="drop-zone__content">
+                                <div class="drop-zone__icon">📊</div>
+                                <h3 class="drop-zone__title">Arrastra tu archivo Excel aquí</h3>
+                                <p class="drop-zone__subtitle">o haz clic para seleccionar</p>
+                                <div class="drop-zone__formats">
+                                    <span class="format-tag">XLSX</span>
+                                    <span class="format-tag">XLS</span>
+                                </div>
+                            </div>
+                            <input type="file" id="excelFile" accept=".xlsx,.xls" style="display: none;">
+                        </div>
+
+                        <!-- Format Instructions -->
+                        <div class="format-instructions">
+                            <h4>Formato requerido:</h4>
+                            <ul>
+                                <li>Columna A: <strong>Nombre</strong> (nombre completo del participante)</li>
+                                <li>Columna B: <strong>Entidad</strong> (organización de procedencia)</li>
+                                <li>Tamaño máximo: 5MB</li>
+                                <li>Máximo 1000 participantes</li>
+                            </ul>
+                            <a href="https://ppl-ai-code-interpreter-files.s3.amazonaws.com/web/direct-files/a896f9e9af33bd5e652d3e2cfc701e10/c150bfeb-b5de-49eb-926c-331527ecb4c8/14d29dd8.xlsx" 
+                               class="btn btn--outline btn--sm" 
+                               target="_blank">
+                                📋 Descargar Plantilla Excel
+                            </a>
+                        </div>
+
+                        <!-- Processing Status -->
+                        <div id="processingStatus" class="processing-status hidden">
+                            <div class="processing-spinner"></div>
+                            <span>Procesando archivo...</span>
+                        </div>
+
+                        <!-- Error Messages -->
+                        <div id="errorMessage" class="error-message hidden">
+                            <div class="error-icon">⚠️</div>
+                            <span id="errorText"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Preview Section -->
+                <div id="previewSection" class="card preview-section hidden">
+                    <div class="card__header">
+                        <h3>Vista Previa</h3>
+                        <span class="status status--info" id="previewCount">0 participantes encontrados</span>
+                    </div>
+                    <div class="card__body">
+                        <div class="preview-table-container">
+                            <table id="previewTable" class="preview-table">
+                                <thead>
+                                    <tr>
+                                        <th>Nombre</th>
+                                        <th>Entidad</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="previewTableBody">
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="preview-actions">
+                            <button id="confirmImport" class="btn btn--primary btn--lg">
+                                ✅ Confirmar Importación
+                            </button>
+                            <button id="cancelImport" class="btn btn--secondary btn--lg">
+                                ❌ Cancelar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Manual Entry Section -->
+                <div class="card manual-entry-section">
+                    <div class="card__header">
+                        <h2>Agregar Participante Manualmente</h2>
+                    </div>
+                    <div class="card__body">
+                        <form id="addParticipantForm" class="participant-form">
+                            <div class="form-group">
+                                <label for="nombre" class="form-label">Nombre Completo *</label>
+                                <input type="text" id="nombre" name="nombre" class="form-control" required placeholder="Ingrese el nombre completo">
+                            </div>
+                            <div class="form-group">
+                                <label for="entidad" class="form-label">Entidad/Organización *</label>
+                                <input type="text" id="entidad" name="entidad" class="form-control" required placeholder="Ingrese la entidad de procedencia">
+                            </div>
+                            <button type="submit" class="btn btn--primary btn--lg btn--full-width">
+                                Agregar Participante
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Lista de Participantes Agregados -->
+                <div class="card participants-list">
+                    <div class="card__header">
+                        <h3>Participantes Registrados</h3>
+                        <span class="status status--info" id="totalParticipants">0 participantes</span>
+                    </div>
+                    <div class="card__body">
+                        <div id="participantsList" class="participants-grid">
+                            <!-- Los participantes se mostrarán aquí dinámicamente -->
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Tomar Asistencia Tab -->
+            <section id="asistencia" class="tab-pane" role="tabpanel">
+                <div class="attendance-header">
+                    <div class="search-container">
+                        <input type="text" id="searchParticipant" class="form-control" placeholder="Buscar participante...">
+                    </div>
+                    <div class="attendance-counters">
+                        <div class="counter counter--success">
+                            <span class="counter-number" id="presentCount">0</span>
+                            <span class="counter-label">Presentes</span>
+                        </div>
+                        <div class="counter counter--error">
+                            <span class="counter-number" id="absentCount">0</span>
+                            <span class="counter-label">Ausentes</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="attendance-list" id="attendanceList">
+                    <!-- Lista de asistencia se generará dinámicamente -->
+                </div>
+            </section>
+
+            <!-- Resumen Tab -->
+            <section id="resumen" class="tab-pane" role="tabpanel">
+                <div class="summary-stats">
+                    <div class="stat-card">
+                        <div class="stat-number" id="summaryTotal">0</div>
+                        <div class="stat-label">Total Participantes</div>
+                    </div>
+                    <div class="stat-card stat-card--success">
+                        <div class="stat-number" id="summaryPresent">0</div>
+                        <div class="stat-label">Presentes</div>
+                    </div>
+                    <div class="stat-card stat-card--error">
+                        <div class="stat-number" id="summaryAbsent">0</div>
+                        <div class="stat-label">Ausentes</div>
+                    </div>
+                    <div class="stat-card stat-card--info">
+                        <div class="stat-number" id="summaryPercentage">0%</div>
+                        <div class="stat-label">% Asistencia</div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card__header">
+                        <h3>Lista Final de Asistencia</h3>
+                        <button class="btn btn--secondary" id="exportBtn">
+                            📋 Copiar Lista
+                        </button>
+                    </div>
+                    <div class="card__body">
+                        <div id="finalAttendanceList" class="final-list">
+                            <!-- Lista final se generará dinámicamente -->
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
