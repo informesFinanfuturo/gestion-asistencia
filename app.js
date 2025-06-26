@@ -449,7 +449,7 @@ function renderAttendanceList() {
                 <span class="participant-entity">${p.entidad}</span>
             </div>
             <div class="attendance-actions">
-                <button class="btn btn--icon ${p.asistencia ? 'btn--success' : 'btn--outline'}" onclick="toggleAttendance(${p.id})">
+                <button class="btn btn--icon ${p.asistencia ? 'btn--success' : 'btn--outline'}" data-id="${p.id}">
                     ${p.asistencia ? '✅' : '❌'}
                 </button>
             </div>
@@ -457,6 +457,14 @@ function renderAttendanceList() {
         attendanceListDiv.appendChild(attendanceItem);
     });
     updateAttendanceCounters();
+
+    // Attach event listeners after rendering
+    document.querySelectorAll('.attendance-actions button').forEach(button => {
+        button.addEventListener('click', function() {
+            const id = parseInt(this.dataset.id);
+            toggleAttendance(id);
+        });
+    });
 }
 
 function toggleAttendance(id) {
