@@ -6,8 +6,202 @@ const appData = {
     previewData: []
 };
 
+// ============================================
+// FUNCIONES DE PERSISTENCIA PARA LOCALSTORAGE
+// Agregar este código después de la definición de appData
+// ============================================
+
+// Constante para la clave de almacenamiento
+const STORAGE_KEY = 'gestion_asistencia_datos';
+
+// Función 1: Guardar datos en localStorage
+function saveToStorage() {
+    try {
+        // Verificar si localStorage está disponible
+        if (typeof(Storage) === "undefined") {
+            console.warn('localStorage no está disponible en este navegador');
+            return false;
+        }
+        
+        // Convertir appData a JSON y guardarlo
+        const dataToSave = JSON.stringify(appData);
+        localStorage.setItem(STORAGE_KEY, dataToSave);
+        
+        console.log('Datos guardados exitosamente');
+        return true;
+        
+    } catch (error) {
+        if (error.name === 'QuotaExceededError') {
+            console.error('Error: No hay suficiente espacio en localStorage');
+            alert('No se pueden guardar los datos. El almacenamiento está lleno.');
+        } else {
+            console.error('Error al guardar datos:', error);
+        }
+        return false;
+    }
+}
+
+// Función 2: Cargar datos desde localStorage
+function loadFromStorage() {
+    try {
+        // Verificar si localStorage está disponible
+        if (typeof(Storage) === "undefined") {
+            console.warn('localStorage no está disponible en este navegador');
+            return false;
+        }
+        
+        // Obtener datos del localStorage
+        const savedData = localStorage.getItem(STORAGE_KEY);
+        
+        if (savedData) {
+            // Convertir JSON de vuelta a objeto
+            const parsedData = JSON.parse(savedData);
+            
+            // Validar que los datos tienen la estructura correcta
+            if (parsedData && typeof parsedData === 'object') {
+                // Restaurar los datos a appData
+                if (parsedData.participants && Array.isArray(parsedData.participants)) {
+                    appData.participants = parsedData.participants;
+                }
+                if (parsedData.currentEvent && typeof parsedData.currentEvent === 'string') {
+                    appData.currentEvent = parsedData.currentEvent;
+                }
+                if (parsedData.eventDate && typeof parsedData.eventDate === 'string') {
+                    appData.eventDate = parsedData.eventDate;
+                }
+                
+                // Actualizar la interfaz con los datos cargados
+                updateUI();
+                if (typeof updateSummary === 'function') {
+                    updateSummary();
+                }
+                
+                // Mostrar mensaje de confirmación
+                console.log('Datos cargados exitosamente');
+                
+                // Opcional: Mostrar notificación al usuario
+                if (appData.participants.length > 0) {
+                    showNotification(`✓ Se restauraron ${appData.participants.length} participantes`);
+                }
+                
+                return true;
+            }
+        }
+        
+        console.log('No se encontraron datos guardados');
+        return false;
+        
+    } catch (error) {
+        console.error('Error al cargar datos:', error);
+        
+        // Si los datos están corruptos, limpiar el localStorage
+        if (error instanceof SyntaxError) {
+            console.warn('Datos corruptos detectados, limpiando localStorage');
+            localStorage.removeItem(STORAGE_KEY);
+        }
+        
+        return false;
+    }
+}
+
+// Función 3: Limpiar todos los datos guardados
+function clearStorage() {
+    try {
+        // Mostrar confirmación al usuario
+        const confirmClear = confirm(
+            '¿Estás seguro de que quieres eliminar todos los datos guardados?\n\n' +
+            'Esta acción no se puede deshacer y perderás:\n' +
+            '• Todos los participantes\n' +
+            '• Todas las marcas de asistencia\n' +
+            '• La información del evento'
+        );
+        
+        if (!confirmClear) {
+            return false;
+        }
+        
+        // Limpiar localStorage
+        localStorage.removeItem(STORAGE_KEY);
+        
+        // Reiniciar appData a su estado inicial
+        appData.participants = [];
+        appData.currentEvent = '';
+        appData.eventDate = '';
+        
+        // Actualizar la interfaz
+        updateUI();
+        if (typeof updateSummary === 'function') {
+            updateSummary();
+        }
+        
+        // Mostrar confirmación
+        alert('✓ Todos los datos han sido eliminados exitosamente');
+        console.log('Datos limpiados exitosamente');
+        
+        return true;
+        
+    } catch (error) {
+        console.error('Error al limpiar datos:', error);
+        alert('Error al limpiar los datos. Inténtalo de nuevo.');
+        return false;
+    }
+}
+
+// Función auxiliar para mostrar notificaciones
+function showNotification(message, type = 'success') {
+    const notification = document.createElement('div');
+    notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: ${type === 'success' ? '#4CAF50' : '#f44336'};
+        color: white;
+        padding: 12px 16px;
+        border-radius: 5px;
+        z-index: 1000;
+        font-size: 14px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        max-width: 300px;
+    `;
+    notification.textContent = message;
+    document.body.appendChild(notification);
+    
+    // Remover notificación después de 3 segundos
+    setTimeout(() => {
+        if (notification.parentNode) {
+            notification.parentNode.removeChild(notification);
+        }
+    }, 3000);
+}
+
+// Función auxiliar para verificar el estado del almacenamiento
+function getStorageInfo() {
+    try {
+        const savedData = localStorage.getItem(STORAGE_KEY);
+        if (savedData) {
+            const data = JSON.parse(savedData);
+            return {
+                hasData: true,
+                participantsCount: data.participants ? data.participants.length : 0,
+                eventName: data.currentEvent || 'Sin nombre',
+                eventDate: data.eventDate || 'Sin fecha',
+                dataSize: new Blob([savedData]).size
+            };
+        }
+        return { hasData: false };
+    } catch (error) {
+        return { hasData: false, error: error.message };
+    }
+}
+
+// ============================================
+// FIN DE FUNCIONES DE PERSISTENCIA
+// ============================================
+
+
 // Initialize application
 document.addEventListener('DOMContentLoaded', function() {
+    loadFromStorage();
     initializeTabs();
     initializeExcelImport();
     initializeManualEntry();
@@ -228,6 +422,7 @@ function confirmImport() {
             });
             addedCount++;
         }
+        saveToStorage();
     });
     
     // Show success message
@@ -383,6 +578,7 @@ function markAttendance(participantId, isPresent) {
         participant.asistencia = isPresent;
         updateAttendanceCounters();
         updateSummary();
+        saveToStorage();
     }
 }
 
@@ -539,6 +735,7 @@ function removeParticipant(participantId) {
     if (confirm('¿Estás seguro de que deseas eliminar este participante?')) {
         appData.participants = appData.participants.filter(p => p.id !== participantId);
         updateUI();
+        saveToStorage();
     }
 }
 

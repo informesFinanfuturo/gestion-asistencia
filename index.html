@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,6 +8,7 @@
     <link rel="stylesheet" href="style.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
+
 <body>
     <div class="container">
         <header class="app-header">
@@ -64,12 +66,14 @@
                                 <li>Tamaño máximo: 5MB</li>
                                 <li>Máximo 1000 participantes</li>
                             </ul>
-                            <a href="https://ppl-ai-code-interpreter-files.s3.amazonaws.com/web/direct-files/a896f9e9af33bd5e652d3e2cfc701e10/c150bfeb-b5de-49eb-926c-331527ecb4c8/14d29dd8.xlsx" 
-                               class="btn btn--outline btn--sm" 
-                               target="_blank">
+                            <a href="https://ppl-ai-code-interpreter-files.s3.amazonaws.com/web/direct-files/a896f9e9af33bd5e652d3e2cfc701e10/c150bfeb-b5de-49eb-926c-331527ecb4c8/14d29dd8.xlsx"
+                                class="btn btn--outline btn--sm" target="_blank">
                                 📋 Descargar Plantilla Excel
                             </a>
                         </div>
+                        <button onclick="clearStorage()" class="btn btn--outline btn--sm" style="margin: 10px;">
+                            🗑️ Limpiar Todos los Datos
+                        </button>
 
                         <!-- Processing Status -->
                         <div id="processingStatus" class="processing-status hidden">
@@ -124,11 +128,13 @@
                         <form id="addParticipantForm" class="participant-form">
                             <div class="form-group">
                                 <label for="nombre" class="form-label">Nombre Completo *</label>
-                                <input type="text" id="nombre" name="nombre" class="form-control" required placeholder="Ingrese el nombre completo">
+                                <input type="text" id="nombre" name="nombre" class="form-control" required
+                                    placeholder="Ingrese el nombre completo">
                             </div>
                             <div class="form-group">
                                 <label for="entidad" class="form-label">Entidad/Organización *</label>
-                                <input type="text" id="entidad" name="entidad" class="form-control" required placeholder="Ingrese la entidad de procedencia">
+                                <input type="text" id="entidad" name="entidad" class="form-control" required
+                                    placeholder="Ingrese la entidad de procedencia">
                             </div>
                             <button type="submit" class="btn btn--primary btn--lg btn--full-width">
                                 Agregar Participante
@@ -155,7 +161,8 @@
             <section id="asistencia" class="tab-pane" role="tabpanel">
                 <div class="attendance-header">
                     <div class="search-container">
-                        <input type="text" id="searchParticipant" class="form-control" placeholder="Buscar participante...">
+                        <input type="text" id="searchParticipant" class="form-control"
+                            placeholder="Buscar participante...">
                     </div>
                     <div class="attendance-counters">
                         <div class="counter counter--success">
@@ -214,4 +221,5 @@
 
     <script src="app.js"></script>
 </body>
+
 </html>
