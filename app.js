@@ -201,7 +201,9 @@ function getStorageInfo() {
 
 // Initialize application
 document.addEventListener('DOMContentLoaded', function() {
-    loadFromStorage();
+    loadFromStorage(); // Tu función existente
+    verificarDatosEnURL(); // Detecta datos en URL automáticamente
+    agregarBotonesSincronizacion(); // Agrega interfaz de sincronización
     initializeTabs();
     initializeExcelImport();
     initializeManualEntry();
@@ -767,3 +769,142 @@ function escapeHtml(text) {
     div.textContent = text;
     return div.innerHTML;
 }
+
+function verificarDatosEnURL() {
+    try {
+        // Obtenemos la URL actual y sus parámetros
+        const url = new URL(window.location.href);
+        const params = url.searchParams;
+
+        // Verificamos si existe el parámetro con los datos
+        if (params.has('data')) {
+            const datosCodificados = params.get('data');
+            if (datosCodificados) {
+                // Decodificamos los datos
+                const datosJSON = decodeURIComponent(datosCodificados);
+                const datos = JSON.parse(datosJSON);
+
+                // Validamos la estructura básica de los datos
+                if (datos && typeof datos === 'object' && Array.isArray(datos.participants)) {
+                    // Importamos los datos al estado de la aplicación
+                    appData.participants = datos.participants;
+                    if (datos.currentEvent) appData.currentEvent = datos.currentEvent;
+                    if (datos.eventDate) appData.eventDate = datos.eventDate;
+
+                    // Actualizamos la interfaz
+                    updateUI();
+                    if (typeof updateSummary === 'function') updateSummary();
+
+                    // Notificamos al usuario
+                    showNotification(`✓ Se importaron ${datos.participants.length} participantes desde la URL`);
+                }
+            }
+        }
+    } catch (error) {
+        console.error('Error al verificar datos en URL:', error);
+    }
+}
+
+function agregarBotonesSincronizacion() {
+    // Buscamos el contenedor donde agregar los botones (ajusta el selector según tu HTML)
+    const container = document.querySelector('.container-buttons') || 
+                      document.querySelector('.header') ||
+                      document.body;
+
+    if (!container) return;
+
+    // Botón para exportar datos como URL
+    const btnExportarURL = document.createElement('button');
+    btnExportarURL.className = 'btn btn--outline btn--sm';
+    btnExportarURL.textContent = '🔗 Exportar como URL';
+    btnExportarURL.onclick = exportarComoURL;
+    container.appendChild(btnExportarURL);
+
+    // Botón para importar datos desde URL (opcional, normalmente se detecta automáticamente)
+    // const btnImportarURL = document.createElement('button');
+    // btnImportarURL.className = 'btn btn--outline btn--sm';
+    // btnImportarURL.textContent = 'Importar desde URL';
+    // btnImportarURL.onclick = importarDesdeURL;
+    // container.appendChild(btnImportarURL);
+
+    // Botón para exportar datos como archivo JSON
+    const btnExportarJSON = document.createElement('button');
+    btnExportarJSON.className = 'btn btn--outline btn--sm';
+    btnExportarJSON.textContent = '📁 Exportar como JSON';
+    btnExportarJSON.onclick = exportarComoJSON;
+    container.appendChild(btnExportarJSON);
+
+    // Botón para importar datos desde archivo JSON
+    const btnImportarJSON = document.createElement('button');
+    btnImportarJSON.className = 'btn btn--outline btn--sm';
+    btnImportarJSON.textContent = 'Importar desde JSON';
+    btnImportarJSON.onclick = importarDesdeJSON;
+    container.appendChild(btnImportarJSON);
+}
+
+// Función auxiliar para exportar datos como URL
+function exportarComoURL() {
+    try {
+        // Convertimos appData a JSON y lo codificamos para la URL
+        const datosJSON = JSON.stringify(appData);
+        const datosCodificados = encodeURIComponent(datosJSON);
+
+        // Creamos la URL con el parámetro data
+        const url = new URL(window.location.href);
+        url.searchParams.set('data', datosCodificados);
+
+        // Copiamos la URL al portapapeles
+        navigator.clipboard.writeText(url.href)
+            .then(() => {
+                showNotification('✓ URL copiada al portapapeles');
+            })
+            .catch(() => {
+                prompt('Copie esta URL para compartir los datos:', url.href);
+            });
+    } catch (error) {
+        console.error('Error al exportar como URL:', error);
+        showNotification('❌ Error al exportar como URL', 'error');
+    }
+}
+
+// Función auxiliar para exportar datos como archivo JSON
+function exportarComoJSON() {
+    const datosJSON = JSON.stringify(appData, null, 2);
+    const blob = new Blob([datosJSON], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'asistencia.json';
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+// Función auxiliar para importar datos desde archivo JSON
+function importarDesdeJSON() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.onchange = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            try {
+                const datos = JSON.parse(event.target.result);
+                if (datos && typeof datos === 'object' && Array.isArray(datos.participants)) {
+                    appData.participants = datos.participants;
+                    if (datos.currentEvent) appData.currentEvent = datos.currentEvent;
+                    if (datos.eventDate) appData.eventDate = datos.eventDate;
+                    updateUI();
+                    if (typeof updateSummary === 'function') updateSummary();
+                    showNotification(`✓ Se importaron ${datos.participants.length} participantes desde el archivo`);
+                }
+            } catch (error) {
+                showNotification('❌ Error al importar el archivo', 'error');
+            }
+        };
+        reader.readAsText(file);
+    };
+    input.click();
+}
+
