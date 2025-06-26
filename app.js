@@ -72,30 +72,33 @@ function clearStorage() {
             return false;
         }
 
-        // Reiniciar appData a su estado inicial y guardar en Firebase
+        // Reiniciar appData a su estado inicial
         appData.participants = [];
         appData.currentEvent = '';
         appData.eventDate = '';
         appData.nextId = 1;
 
-        // Actualizar la interfaz
-        updateUI();
-        if (typeof updateSummary === 'function') {
-            updateSummary();
-        }
-
-        // Sincronizar con Firebase después de limpiar
-        saveToFirebase();
-
-        // Mostrar confirmación
-        alert('✓ Todos los datos han sido eliminados exitosamente');
-        console.log('Datos limpiados exitosamente');
+        // Guardar el estado vacío en Firebase para borrar los datos remotos
+        set(ref(database, 'eventos/' + EVENT_ID), null) // Establecer a null para eliminar el nodo
+            .then(() => {
+                console.log('Datos eliminados de Firebase exitosamente.');
+                // Actualizar la interfaz después de la eliminación exitosa
+                updateUI();
+                if (typeof updateSummary === 'function') {
+                    updateSummary();
+                }
+                showNotification('✓ Todos los datos han sido eliminados exitosamente.');
+            })
+            .catch((error) => {
+                console.error('Error al eliminar datos de Firebase:', error);
+                showError('Error al eliminar los datos de Firebase. Inténtalo de nuevo.');
+            });
 
         return true;
 
     } catch (error) {
-        console.error('Error al limpiar datos:', error);
-        alert('Error al limpiar los datos. Inténtalo de nuevo.');
+        console.error('Error al limpiar datos (local):', error);
+        showError('Error al limpiar los datos. Inténtalo de nuevo.');
         return false;
     }
 }
@@ -388,11 +391,19 @@ function renderParticipantsList() {
                 <span class="participant-name">${p.nombre}</span>
                 <span class="participant-entity">${p.entidad}</span>
             </div>
-            <button class="btn btn--danger btn--sm" onclick="removeParticipant(${p.id})">
+            <button class="btn btn--danger btn--sm delete-participant-btn" data-id="${p.id}">
                 🗑️
             </button>
         `;
         participantsListDiv.appendChild(participantCard);
+    });
+
+    // Attach event listeners after rendering
+    document.querySelectorAll('.delete-participant-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            const id = parseInt(this.dataset.id);
+            removeParticipant(id);
+        });
     });
 }
 
@@ -494,83 +505,57 @@ function renderFinalAttendanceList() {
         return;
     }
 
-    const presentParticipants = appData.participants.filter(p => p.asistencia);
-    const absentParticipants = appData.participants.filter(p => !p.asistencia);
-
-    if (presentParticipants.length > 0) {
-        const presentHeader = document.createElement('h4');
-        presentHeader.textContent = 'Presentes:';
-        finalAttendanceListDiv.appendChild(presentHeader);
-        presentParticipants.forEach(p => {
-            const pElement = document.createElement('p');
-            pElement.textContent = `✅ ${p.nombre} (${p.entidad})`;
-            finalAttendanceListDiv.appendChild(pElement);
-        });
-    }
-
-    if (absentParticipants.length > 0) {
-        const absentHeader = document.createElement('h4');
-        absentHeader.textContent = 'Ausentes:';
-        finalAttendanceListDiv.appendChild(absentHeader);
-        absentParticipants.forEach(p => {
-            const pElement = document.createElement('p');
-            pElement.textContent = `❌ ${p.nombre} (${p.entidad})`;
-            finalAttendanceListDiv.appendChild(pElement);
-        });
-    }
+    appData.participants.forEach(p => {
+        const item = document.createElement('div');
+        item.className = 'final-list-item';
+        item.textContent = `${p.nombre} - ${p.entidad} (${p.asistencia ? 'Presente' : 'Ausente'})`;
+        finalAttendanceListDiv.appendChild(item);
+    });
 }
 
 function copyAttendanceList() {
-    let textToCopy = 'Lista de Asistencia:\n\n';
-
-    const presentParticipants = appData.participants.filter(p => p.asistencia);
-    const absentParticipants = appData.participants.filter(p => !p.asistencia);
-
-    if (presentParticipants.length > 0) {
-        textToCopy += 'Presentes:\n';
-        presentParticipants.forEach(p => {
-            textToCopy += `✅ ${p.nombre} (${p.entidad})\n`;
-        });
-        textToCopy += '\n';
+    const finalAttendanceListDiv = document.getElementById('finalAttendanceList');
+    const range = document.createRange();
+    range.selectNode(finalAttendanceListDiv);
+    window.getSelection().removeAllRanges(); // Clear current selection
+    window.getSelection().addRange(range); // Select the text
+    try {
+        document.execCommand('copy');
+        showNotification('Lista copiada al portapapeles.');
+    } catch (err) {
+        console.error('Error al copiar la lista:', err);
+        showError('No se pudo copiar la lista.');
     }
-
-    if (absentParticipants.length > 0) {
-        textToCopy += 'Ausentes:\n';
-        absentParticipants.forEach(p => {
-            textToCopy += `❌ ${p.nombre} (${p.entidad})\n`;
-        });
-        textToCopy += '\n';
-    }
-
-    navigator.clipboard.writeText(textToCopy)
-        .then(() => {
-            showNotification('✓ Lista de asistencia copiada al portapapeles.');
-        })
-        .catch(err => {
-            console.error('Error al copiar la lista:', err);
-            showError('Error al copiar la lista. Por favor, inténtalo de nuevo.');
-        });
+    window.getSelection().removeAllRanges(); // Deselect the text
 }
 
 function showError(message) {
     const errorMessageDiv = document.getElementById('errorMessage');
     document.getElementById('errorText').textContent = message;
     errorMessageDiv.classList.remove('hidden');
-    document.getElementById('processingStatus').classList.add('hidden');
+    // Ocultar el mensaje de error después de 5 segundos
+    setTimeout(() => {
+        errorMessageDiv.classList.add('hidden');
+    }, 5000);
 }
 
-// Funciones de sincronización con URL (Añadidas para el contexto del usuario)
-// Comentadas porque no están definidas en el código proporcionado y causan ReferenceError
-// function verificarDatosEnURL() {
-//     // Esta función es un placeholder. Si el usuario necesita funcionalidad real aquí,
-//     // se debe implementar la lógica para leer parámetros de la URL y procesarlos.
-//     console.log('Función verificarDatosEnURL ejecutada. No hay lógica implementada.');
-// }
+// Funciones que estaban comentadas y no se usan actualmente
+/*
+function verificarDatosEnURL() {
+    // Lógica para verificar datos en URL
+}
 
-// function agregarBotonesSincronizacion() {
-//     // Esta función es un placeholder. Si el usuario necesita funcionalidad real aquí,
-//     // se debe implementar la lógica para añadir botones o UI para sincronización.
-//     console.log('Función agregarBotonesSincronizacion ejecutada. No hay lógica implementada.');
-// }
+function agregarBotonesSincronizacion() {
+    // Lógica para agregar botones de sincronización
+}
+*/
+
+// Event listener para el botón de limpiar datos
+document.addEventListener('DOMContentLoaded', () => {
+    const clearButton = document.querySelector('button[onclick="clearStorage()"]');
+    if (clearButton) {
+        clearButton.addEventListener('click', clearStorage);
+    }
+});
 
 
