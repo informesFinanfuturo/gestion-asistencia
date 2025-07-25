@@ -1,5 +1,6 @@
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.0.0/firebase-app.js';
 import { getDatabase, ref, set, onValue } from 'https://www.gstatic.com/firebasejs/9.0.0/firebase-database.js';
+import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js';
 
 // Application Data
 const appData = {
@@ -24,6 +25,7 @@ const firebaseConfig = {
 // Inicializar Firebase
 const app = initializeApp(firebaseConfig);
 const database = getDatabase(app);
+const auth = getAuth(app);
 
 // Guardar datos en Firebase
 function saveToFirebase() {
@@ -237,6 +239,11 @@ function processExcelFile(file) {
 
 // Initialize application
 document.addEventListener('DOMContentLoaded', function () {
+    // Inicialización diferida hasta que el usuario inicie sesión
+});
+
+// Functions to initialize the UI once the user is authenticated
+function initializeApplication() {
     loadFromFirebase(); // Tu función existente
     // Las siguientes funciones se han comentado porque no están definidas en el código proporcionado
     // verificarDatosEnURL(); // Detecta datos en URL automáticamente
@@ -247,7 +254,7 @@ document.addEventListener('DOMContentLoaded', function () {
     initializeAttendance();
     initializeSummary();
     // updateUI(); // Se llama dentro de loadFromFirebase
-});
+}
 
 // Tab Management
 function initializeTabs() {
@@ -564,6 +571,42 @@ document.addEventListener('DOMContentLoaded', () => {
     if (clearButton) {
         clearButton.addEventListener('click', clearStorage);
     }
+
+    const loginForm = document.getElementById('loginForm');
+    const logoutBtn = document.getElementById('logoutBtn');
+
+    if (loginForm) {
+        loginForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            signInWithEmailAndPassword(auth, email, password).catch((error) => {
+                console.error('Error de autenticación:', error);
+                showError('Error al iniciar sesión');
+            });
+        });
+    }
+
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', () => {
+            signOut(auth);
+        });
+    }
+
+    onAuthStateChanged(auth, (user) => {
+        const loginSection = document.getElementById('loginSection');
+        const appContainer = document.querySelector('.container');
+        if (user) {
+            loginSection.classList.add('hidden');
+            appContainer.classList.remove('hidden');
+            logoutBtn.classList.remove('hidden');
+            initializeApplication();
+        } else {
+            appContainer.classList.add('hidden');
+            loginSection.classList.remove('hidden');
+            logoutBtn.classList.add('hidden');
+        }
+    });
 });
 
 

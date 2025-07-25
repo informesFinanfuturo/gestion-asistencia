@@ -10,10 +10,19 @@
 </head>
 
 <body>
-    <div class="container">
+    <div id="loginSection" class="login-section">
+        <form id="loginForm" class="login-form">
+            <h2>Iniciar Sesión</h2>
+            <input type="email" id="email" class="form-control" placeholder="Correo" required>
+            <input type="password" id="password" class="form-control" placeholder="Contraseña" required>
+            <button type="submit" class="btn btn--primary btn--full-width">Ingresar</button>
+        </form>
+    </div>
+    <div class="container hidden">
         <header class="app-header">
             <h1>Gestión de Asistencia</h1>
             <p class="event-info">Evento de Ejemplo - 24 de Junio, 2025</p>
+            <button id="logoutBtn" class="btn btn--secondary btn--sm hidden">Cerrar Sesión</button>
         </header>
 
         <!-- Navigation Tabs -->

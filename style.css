@@ -1232,11 +1232,32 @@ select.form-control {
   .summary-stats {
     grid-template-columns: 1fr;
   }
-  
+
   .btn--lg {
     padding: var(--space-12) var(--space-16);
     font-size: var(--font-size-base);
   }
+}
+
+/* Login styles */
+.login-section {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+}
+
+.login-form {
+  width: 100%;
+  max-width: 320px;
+  padding: var(--space-24);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
 }
 
 
