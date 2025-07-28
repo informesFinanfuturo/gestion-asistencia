@@ -13,13 +13,14 @@ const appData = {
 const EVENT_ID = 'evento_actual';
 
 const firebaseConfig = {
-  apiKey: "AIzaSyAdUT0PWZCmnrUllDsog4wv_jvbhAVNl",
+  apiKey: "AIzaSyAdUT0PwWZCmnrUlluDsog4wv_jvbhAVNI",
   authDomain: "gestion-de-asistencia-11fb2.firebaseapp.com",
   databaseURL: "https://gestion-de-asistencia-11fb2-default-rtdb.firebaseio.com",
   projectId: "gestion-de-asistencia-11fb2",
   storageBucket: "gestion-de-asistencia-11fb2.appspot.com",
-  messagingSenderId: "1234567890",
-  appId: "1:1234567890:web:abcdef123456"
+  messagingSenderId: "123255093355",
+  appId: "1:123255093355:web:a574f96d89358a94b2d92e",
+  measurementId: "G-V8WMQEYB8V"
 };
 
 // Inicializar Firebase
