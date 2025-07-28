@@ -1,5 +1,5 @@
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.0.0/firebase-app.js';
-import { getDatabase, ref, set, onValue } from 'https://www.gstatic.com/firebasejs/9.0.0/firebase-database.js';
+import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, setDoc } from 'https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js';
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js';
 
 // Application Data
@@ -13,94 +13,68 @@ const appData = {
 const EVENT_ID = 'evento_actual';
 
 const firebaseConfig = {
-  apiKey: "AIzaSyAdUT0PwWZCmnrUlluDsog4wv_jvbhAVNI",
-  authDomain: "gestion-de-asistencia-11fb2.firebaseapp.com",
-  databaseURL: "https://gestion-de-asistencia-11fb2-default-rtdb.firebaseio.com",
-  projectId: "gestion-de-asistencia-11fb2",
-  storageBucket: "gestion-de-asistencia-11fb2.appspot.com",
-  messagingSenderId: "123255093355",
-  appId: "1:123255093355:web:a574f96d89358a94b2d92e",
-  measurementId: "G-V8WMQEYB8V"
+    apiKey: "AIzaSyAdUT0PwWZCmnrUlluDsog4wv_jvbhAVNI",
+    authDomain: "gestion-de-asistencia-11fb2.firebaseapp.com",
+    databaseURL: "https://gestion-de-asistencia-11fb2-default-rtdb.firebaseio.com",
+    projectId: "gestion-de-asistencia-11fb2",
+    storageBucket: "gestion-de-asistencia-11fb2.appspot.com",
+    messagingSenderId: "123255093355",
+    appId: "1:123255093355:web:a574f96d89358a94b2d92e",
+    measurementId: "G-V8WMQEYB8V"
 };
 
 // Inicializar Firebase
 const app = initializeApp(firebaseConfig);
-const database = getDatabase(app);
+const db = getFirestore(app);
 const auth = getAuth(app);
 
-// Guardar datos en Firebase
-function saveToFirebase() {
-  set(ref(database, 'eventos/' + EVENT_ID), appData)
-    .then(() => {
-      console.log('Datos sincronizados con Firebase');
-    })
-    .catch((error) => {
-      console.error('Error al sincronizar:', error);
-    });
-}
 
-function loadFromFirebase() {
-  onValue(ref(database, 'eventos/' + EVENT_ID), (snapshot) => {
-    const data = snapshot.val();
-    if (data) {
-      appData.participants = data.participants || [];
-      // Asegurarse de que nextId sea mayor que cualquier ID existente
-      appData.nextId = Math.max(...appData.participants.map(p => p.id), 0) + 1;
-      updateUI();
-      showNotification(`✓ Datos sincronizados: ${appData.participants.length} participantes`);
-    } else {
-        // Si no hay datos en Firebase, inicializar appData y guardar
-        appData.participants = [];
-        appData.nextId = 1;
-        saveToFirebase();
-        updateUI();
-        showNotification('✓ Base de datos de Firebase inicializada.');
-    }
-  });
-}
-
-// Función 3: Limpiar todos los datos guardados
-function clearStorage() {
+async function saveToFirebase() {
     try {
-        // Mostrar confirmación al usuario
-        const confirmClear = confirm(
-            '¿Estás seguro de que quieres eliminar todos los datos guardados?\n\n' +
-            'Esta acción no se puede deshacer y perderás:\n' +
-            '• Todos los participantes\n' +
-            '• Todas las marcas de asistencia\n' +
-            '• La información del evento'
+        const batchPromises = appData.participants.map(p =>
+            setDoc(doc(db, "eventos", EVENT_ID, "participantes", p.id.toString()), p)
         );
-
-        if (!confirmClear) {
-            return false;
-        }
-
-        // Reiniciar appData a su estado inicial
-        appData.participants = [];
-        appData.currentEvent = '';
-        appData.eventDate = '';
-        appData.nextId = 1;
-
-        // Guardar el estado vacío en Firebase para borrar los datos remotos
-        set(ref(database, 'eventos/' + EVENT_ID), null) // Establecer a null para eliminar el nodo
-            .then(() => {
-                console.log('Datos eliminados de Firebase exitosamente.');
-                // Actualizar la interfaz después de la eliminación exitosa
-                updateUI();
-                if (typeof updateSummary === 'function') {
-                    updateSummary();
-                }
-                showNotification('✓ Todos los datos han sido eliminados exitosamente.');
-            })
-            .catch((error) => {
-                console.error('Error al eliminar datos de Firebase:', error);
-                showError('Error al eliminar los datos de Firebase. Inténtalo de nuevo.');
-            });
-
-        return true;
-
+        await Promise.all(batchPromises);
+        console.log('Datos guardados en Firestore');
     } catch (error) {
-        console.error('Error al limpiar datos (local):', error);
+        console.error('Error al guardar en Firestore:', error);
+    }
+}
+
+// Cargar participantes desde Firestore
+async function loadFromFirebase() {
+    try {
+        const querySnapshot = await getDocs(collection(db, "eventos", EVENT_ID, "participantes"));
+        const participants = [];
+        querySnapshot.forEach(docSnap => {
+            participants.push(docSnap.data());
+        });
+        appData.participants = participants;
+        appData.nextId = Math.max(...appData.participants.map(p => p.id), 0) + 1;
+        updateUI();
+        showNotification(`✓ Datos cargados: ${appData.participants.length} participantes`);
+    } catch (error) {
+        console.error('Error al cargar datos:', error);
+    }
+}
+
+// Limpiar toda la colección de participantes
+async function clearStorage() {
+    try {
+        const confirmClear = confirm('¿Seguro que quieres eliminar todos los datos? Esta acción no se puede deshacer.');
+        if (!confirmClear) return false;
+
+        const querySnapshot = await getDocs(collection(db, "eventos", EVENT_ID, "participantes"));
+        const deletePromises = querySnapshot.docs.map(docSnap => deleteDoc(docSnap.ref));
+        await Promise.all(deletePromises);
+
+        appData.participants = [];
+        appData.nextId = 1;
+        updateUI();
+        showNotification('✓ Todos los datos han sido eliminados exitosamente.');
+        return true;
+    } catch (error) {
+        console.error('Error al limpiar datos:', error);
         showError('Error al limpiar los datos. Inténtalo de nuevo.');
         return false;
     }
@@ -408,7 +382,7 @@ function renderParticipantsList() {
 
     // Attach event listeners after rendering
     document.querySelectorAll('.delete-participant-btn').forEach(button => {
-        button.addEventListener('click', function() {
+        button.addEventListener('click', function () {
             const id = parseInt(this.dataset.id);
             removeParticipant(id);
         });
@@ -468,7 +442,7 @@ function renderAttendanceList() {
 
     // Attach event listeners after rendering
     document.querySelectorAll('.attendance-actions button').forEach(button => {
-        button.addEventListener('click', function() {
+        button.addEventListener('click', function () {
             const id = parseInt(this.dataset.id);
             toggleAttendance(id);
         });
@@ -595,19 +569,28 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     onAuthStateChanged(auth, (user) => {
+        const loadingScreen = document.getElementById('loadingScreen');
         const loginSection = document.getElementById('loginSection');
         const appContainer = document.querySelector('.container');
+
+        // Ocultar loader
+        loadingScreen.classList.add('hidden');
+
         if (user) {
+            // Mostrar app
             loginSection.classList.add('hidden');
             appContainer.classList.remove('hidden');
             logoutBtn.classList.remove('hidden');
             initializeApplication();
         } else {
+            // Mostrar login
             appContainer.classList.add('hidden');
             loginSection.classList.remove('hidden');
             logoutBtn.classList.add('hidden');
         }
     });
+
+
 });
 
 
